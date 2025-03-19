@@ -12,7 +12,7 @@ from deep_research.llm.llm import ModelRouter
 from deep_research.nodes import BaseSectionNode
 from deep_research.prompts import QUERY_WRITER_PROMPT, SECTION_WRITER_INPUTS, SECTION_WRITER_USER_PROMPT, \
     SECTION_GRADER_PROMPT, FINAL_SECTION_WRITER_PROMPT
-from deep_research.state import SectionState, Queries
+from deep_research.state import SectionState, Queries, NoResearchSectionState
 from deep_research.utils import web_search, to_feedback, now
 
 
@@ -231,10 +231,10 @@ class WriteNoResearchSectionNode(BaseSectionNode):
     def get_node_name(self) -> str:
         return "write_no_research_section"
 
-    async def ainvoke(self, state: SectionState, config: RunnableConfig):
+    async def ainvoke(self, state: NoResearchSectionState, config: RunnableConfig):
         topic = state["topic"]
         section = state["section"]
-        completed_report_sections = state["report_sections_from_research"]
+        completed_report_sections = state["sections_from_research"]
 
         # 设置撰写总结 这一章节 的 system prompt
         no_research_section_writer_system_prompt = FINAL_SECTION_WRITER_PROMPT.format(topic=topic,
@@ -243,7 +243,7 @@ class WriteNoResearchSectionNode(BaseSectionNode):
                                                                                       context=completed_report_sections,
                                                                                       now=now(), )
 
-        no_research_section_writer_user_prompt = "请根据已经提供的资料生成报告的总结部分。"
+        no_research_section_writer_user_prompt = f"请根据已经提供的资料生成{section.name}报告部分。"
 
         final_writer_llm = ModelRouter().get_model()
         prompts = [

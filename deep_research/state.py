@@ -53,7 +53,7 @@ class ReportState(TypedDict):
     sections: list[Section]
     # 已完成的章节列表
     completed_sections: Annotated[list, operator.add]
-    # 根据研究完成的章节内容字符串，用来撰写最终章节
+    # 根据研究完成的章节内容字符串，用来撰写最终章节 报告级别
     report_sections_from_research: str
     # 最终报告
     final_report: str
@@ -71,10 +71,20 @@ class SectionState(TypedDict):
     search_queries: list[SearchQuery]
     # 从联网搜索中获取的格式化来源内容的字符串
     source_str: str
-    # 根据研究完成的章节内容字符串，用来撰写最终章节
-    report_sections_from_research: str
     # 最终章节列表
     completed_sections: list[Section]
+    # 当前父节点 step
+    parent_step_id: str
+
+
+class NoResearchSectionState(TypedDict):
+    """ 无需联网查询的章节报告状态机 """
+    # 报告主题
+    topic: str
+    # 报告的章节
+    section: Section
+    # 根据研究完成的章节内容字符串，用来撰写需要基于其他章节生成内容的简介、总论等章节
+    sections_from_research: str
     # 当前父节点 step
     parent_step_id: str
 
@@ -83,6 +93,7 @@ class SectionOutputState(TypedDict):
     """ 章节输出状态机 """
     #  已完成的章节
     completed_sections: list[Section]
+
 
 
 

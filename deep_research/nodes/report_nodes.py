@@ -264,7 +264,7 @@ class InitiateNoResearchSectionsWritingNode(BaseNode):
         return [
             Send("write_no_research_section", {"topic": state["topic"],
                                                "section": section,
-                                               "report_sections_from_research": state["report_sections_from_research"]
+                                               "sections_from_research": state["report_sections_from_research"]
                                                })
             for section in state["sections"] if not section.research
         ]
