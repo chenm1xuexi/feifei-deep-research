@@ -1,7 +1,7 @@
 # 基于python3.9 构建基础镜像
 FROM swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/python:3.9-slim
 
-LABEL authors="shixiongfei"
+LABEL authors="chenm1xuexi"
 
 # 设置工作目录
 WORKDIR /app
