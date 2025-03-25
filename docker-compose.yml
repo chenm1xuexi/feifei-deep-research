@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  feifei-deep-research:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: feifei-deep-research
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
