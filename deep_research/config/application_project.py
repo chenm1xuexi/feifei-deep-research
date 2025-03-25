@@ -30,12 +30,14 @@ MAX_SEARCH_DEPTH = 1
 DEEPSEEK_PLANNER_MODEL = {
     "model-name": os.getenv("DEEPSEEK_REASONER_MODEL", "deepseek-reasoner"),
     "api-key": os.getenv("DEEPSEEK_API_KEY"),
+    "base-url": os.getenv("DEEPSEEK_BASE_URL"),
 }
 
 # 撰写模型
 DEEPSEEK_WRITER_MODEL = {
     "model-name": os.getenv("DEEPSEEK_CHAT_MODEL", "deepseek-chat"),
     "api-key": os.getenv("DEEPSEEK_API_KEY"),
+    "base-url": os.getenv("DEEPSEEK_BASE_URL"),
 }
 
 

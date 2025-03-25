@@ -51,6 +51,7 @@ class DeepSeekModel(BaseModel):
     def get_reasoner_model(self):
         return ChatDeepSeek(model=DEEPSEEK_PLANNER_MODEL.get("model-name"),
                             api_key=DEEPSEEK_PLANNER_MODEL.get("api-key"),
+                            api_base=DEEPSEEK_PLANNER_MODEL.get("base-url"),
                             temperature=0)
 
     async def stream(self, inputs):
@@ -59,4 +60,5 @@ class DeepSeekModel(BaseModel):
     def get_model(self):
         return ChatDeepSeek(model=DEEPSEEK_WRITER_MODEL.get("model-name"),
                             api_key=DEEPSEEK_WRITER_MODEL.get("api-key"),
+                            api_base=DEEPSEEK_WRITER_MODEL.get("base-url"),
                             temperature=0)
