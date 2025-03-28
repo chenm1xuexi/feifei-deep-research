@@ -1,10 +1,14 @@
 ## 调度流程图
 ![img.png](frontend/images/img.png)
 
+
 # 背景
 > 主要是参考了langchain团队 最近推出的 open-deep-research进行的二次开发
 > 二次开发的目的是因为 咱国内的技术人员 很多国外的 大模型 和 web search 不可用（或者说在企业内部不允许使用）
 > 因此进行二开，结合chainlit 的 可视化页面 进行整体交互。
+
+## 节点流程图
+![img.png](frontend/images/deep_research_demo.png)
 
 ---
 # 环境要求
