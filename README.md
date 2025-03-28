@@ -31,7 +31,7 @@ pip install -r requirements.txt
 ## 启动前的必要配置
 1. 环境变量配置：请复制 .env.example文件  然后更名为 .env 环境变量文件，请配置自己的deepseek api_key 或者 tongyi api_key 以及对应的 联网搜索 api_key。
 
-2.deep_research/config/application_project.py 是所有全局配置入口，在第一步环境配置完成后，如果选择的大模型是deepseek 请将 MODEL_PROVIDER 进行对应修改。
+2. deep_research/config/application_project.py 是所有全局配置入口，在第一步环境配置完成后，如果选择的大模型是deepseek 请将 MODEL_PROVIDER 进行对应修改。
 
 MODEL_PROVIDER = "deepseek"
 或者
