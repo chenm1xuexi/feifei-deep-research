@@ -404,12 +404,14 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "chainlit" },
+    { name = "fastapi" },
     { name = "langgraph" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "chainlit", specifier = ">=2.6.6" },
+    { name = "fastapi", specifier = ">=0.116.1" },
     { name = "langgraph", specifier = ">=0.6.3" },
 ]
 
