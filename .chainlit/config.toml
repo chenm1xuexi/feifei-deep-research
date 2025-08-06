@@ -93,4 +93,4 @@ custom_build = "./frontend"
 #     url = "https://github.com/Chainlit/chainlit/issues"
 
 [meta]
-generated_by = "2.3.0"
+generated_by = "2.6.6"
