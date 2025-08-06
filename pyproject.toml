@@ -1,0 +1,10 @@
+[project]
+name = "feifei-deep-research"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "chainlit>=2.6.6",
+    "langgraph>=0.6.3",
+]
