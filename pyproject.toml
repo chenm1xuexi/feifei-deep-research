@@ -7,5 +7,8 @@ requires-python = ">=3.12"
 dependencies = [
     "chainlit>=2.6.6",
     "fastapi>=0.116.1",
+    "langchain>=0.3.27",
+    "langchain-deepseek>=0.1.4",
     "langgraph>=0.6.3",
+    "loguru>=0.7.3",
 ]
