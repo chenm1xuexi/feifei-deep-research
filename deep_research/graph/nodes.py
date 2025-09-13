@@ -1,21 +1,21 @@
 from typing import Literal
 
-from langchain_core.messages import HumanMessage, AIMessage
-from langchain_core.runnables import RunnableConfig
+from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from langgraph.constants import END
+from langgraph.runtime import Runtime
 from langgraph.types import Command
 
-from deep_research.graph.configuration import Configuration
+from common.log import logger
+from deep_research.graph.context import StaticContext
 from deep_research.graph.state import DeepResearchState, ClarifyWithUser, ResearchQuestion
+from deep_research.graph.supervisor.prompts import lead_researcher_prompt
 from deep_research.llms.llm import get_llm
 from deep_research.prompts.deep_research_prompts import clarify_with_user_instructions_prompt, \
     transform_messages_into_research_topic_prompt
 from deep_research.utils.utils import now, get_buffer_string
 
-from common.log import logger
 
-
-async def clarify_with_user(state: DeepResearchState, config: RunnableConfig) -> Command[
+async def clarify_with_user(state: DeepResearchState, runtime: Runtime[StaticContext]) -> Command[
     Literal["write_research_brief", "__end__"]]:
     """
         人在环路， 分析用户消息，如果研究范围不明确则询问澄清问题。
@@ -29,24 +29,23 @@ async def clarify_with_user(state: DeepResearchState, config: RunnableConfig) ->
         返回:
             结果路由，用于结束澄清问题或直接进入深度研究流程
     """
-
-    # 获取通用配置
-    configurable = Configuration.from_runnable_config(config)
     # 如果禁止人在环路，则直接进入深度研究流程
-    if not configurable.allow_clarification:
-        return Command("write_research_brief")
+    static_context = runtime.context
+    if not static_context.allow_clarification:
+        return Command(
+            goto="write_research_brief",  # 撰写研究简介流程
+        )
 
     # 获取用户研究主题
     messages = state["messages"]
 
-    # 初始化用户确认反馈的模型调度实例
-    clarification_model = (get_llm(model=configurable.clarification_model,
-                                   max_tokens=configurable.clarification_model_max_tokens)
-                           .with_structured_output(ClarifyWithUser)  # 结构化输出
-                           .with_retry(stop_after_attempt=configurable.max_structured_output_retries)  # 失败重试策略
-                           )
+    # 定义用户澄清模型实例 + 结构化输出
+    clarification_model = get_llm(
+        model=static_context.clarification_model,
+        max_tokens=static_context.clarification_model_max_tokens
+    ).with_structured_output(ClarifyWithUser)  # 结构化输出
 
-    # 调度模型 获取是否需要向用户进行问题信息确认的结构化输出结果
+    # 用户澄清提示词
     prompt = clarify_with_user_instructions_prompt.format(
         messages=get_buffer_string(messages),
         date_time=now(),
@@ -69,7 +68,7 @@ async def clarify_with_user(state: DeepResearchState, config: RunnableConfig) ->
         )
 
 
-async def write_research_brief(state: DeepResearchState, config: RunnableConfig) -> Command[
+async def write_research_brief(state: DeepResearchState, runtime: Runtime[StaticContext]) -> Command[
     Literal["research_supervisor"]]:
     """
     将用户问题 和 澄清结果信息 转换为一个结构化的研究简介实体，然后提供给研究主管智能体去开始进行深度研究
@@ -78,24 +77,42 @@ async def write_research_brief(state: DeepResearchState, config: RunnableConfig)
     同时设置初始的研究主管上下文，包含适当的提示和指令。
     """
 
-    configurable = Configuration.from_runnable_config(config)
+    static_context = runtime.context
 
-    # 初始化 生成 研究简介 模型调度实例
-    research_model = (get_llm(model=configurable.research_model,
-                              max_tokens=configurable.research_model_max_tokens)
-                      .with_structured_output(ResearchQuestion)  # 获取结构化输出
-                      .with_retry(stop_after_attempt=configurable.max_structured_output_retries)  # 失败重试策略
-                      )
+    # 定义 研究规划模型实例 + 结构化输出
+    research_model = get_llm(
+        model=static_context.research_model,
+        max_tokens=static_context.research_model_max_tokens
+    ).with_structured_output(ResearchQuestion)  # 获取结构化输出
 
+    # 生成研究规划简介提示词
     prompt = transform_messages_into_research_topic_prompt.format(
         messages=get_buffer_string(state.get("messages", [])),
         date_time=now(),
     )
 
-    # 生成研究简介 + 指导（其实这里很类似生成研究计划）
+    # 获取深度研究规划简介
     response = await research_model.ainvoke([HumanMessage(content=prompt)])
 
+    # 使用研究简介和指令初始化主管智能体
     # 设置主管节点的系统提示词
-    supervisor_system_prompt = """
-    
-    """
+    supervisor_system_prompt = lead_researcher_prompt.format(
+        date_time=now(),
+        max_concurrent_research_units=static_context.max_concurrent_research_units,
+        max_researcher_iterations=static_context.max_researcher_iterations,
+    )
+
+    return Command(
+        goto="research_supervisor",
+        update={
+            "research_brief": response.research_brief,
+            "supervisor_messages": {
+                "type": "override",
+                "value": [
+                    SystemMessage(content=supervisor_system_prompt),
+                    HumanMessage(content=response.research_brief),
+                ]
+            }
+        }
+
+    )

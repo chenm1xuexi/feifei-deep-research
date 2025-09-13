@@ -19,6 +19,10 @@ class DeepResearchState(MessagesState):
     final_report: str
 
 
+class AgentInputState(MessagesState):
+    """ InputState is only 'messages'. """
+
+
 class ClarifyWithUser(BaseModel):
     """ 是否需要进行用户澄清的实体， 由大模型返回 """
     need_clarification: bool = Field(

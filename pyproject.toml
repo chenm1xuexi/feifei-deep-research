@@ -11,4 +11,5 @@ dependencies = [
     "langchain-deepseek>=0.1.4",
     "langgraph>=0.6.3",
     "loguru>=0.7.3",
+    "tavily-python>=0.7.12",
 ]
