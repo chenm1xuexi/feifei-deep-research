@@ -28,17 +28,17 @@ class StaticContext(BaseModel):
     max_react_tool_calls: int = Field(default=10, description="research agent 最大可调用工具次数")
 
     summarization_model: str = Field(default="bigmodel/glm-4.5", description="针对联网搜索结果进行总结的模型选择")
-    summarization_model_max_tokens: str = Field(default=100000, description="模型最大输出token")
+    summarization_model_max_tokens: str = Field(default=80000, description="模型最大输出token")
     max_content_length: int = Field(default=30000,
                                     description="允许网页内容最大长度限制，网页内容将交与总结模型进行生成摘要")
 
     research_model: str = Field(default="bigmodel/glm-4.5", description="进行深度研究的模型选择")
-    research_model_max_context_length: str = Field(default=100000, description="深度研究模型最终输出的最大长度token限制")
+    research_model_max_context_length: str = Field(default=80000, description="深度研究模型最终输出的最大长度token限制")
     research_model_max_tokens: str = Field(default=50000, description="深度研究模型最终输出的最大长度token限制")
 
     compression_model: str = Field(default="bigmodel/glm-4.5",
                                    description="对研究智能体的发现成果 整体进行压缩的模型")
-    compression_model_context_length: int = Field(default=100000,
+    compression_model_context_length: int = Field(default=80000,
                                                   description="上下文压缩模型最大输入token")
     compression_model_max_tokens: str = Field(default=8192, description="上下文压缩模型最大输出token")
 
