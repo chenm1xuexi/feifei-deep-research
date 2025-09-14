@@ -47,3 +47,4 @@ async def chat(message: cl.Message):
         if chunk.get("clarify_with_user"):
             ai_message = chunk.get("clarify_with_user").get("messages")[-1]
             await cl.Message(content=ai_message.content).send()
+
