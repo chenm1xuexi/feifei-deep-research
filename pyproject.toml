@@ -9,6 +9,7 @@ dependencies = [
     "fastapi>=0.116.1",
     "langchain>=0.3.27",
     "langchain-deepseek>=0.1.4",
+    "langchain-mcp-adapters>=0.1.9",
     "langgraph>=0.6.3",
     "loguru>=0.7.3",
     "tavily-python>=0.7.12",

@@ -1,6 +1,7 @@
 from langgraph.graph import StateGraph
 
 from deep_research.graph.context import StaticContext
+from deep_research.graph.supervisor.nodes import supervisor, supervisor_tools
 from deep_research.graph.supervisor.state import SupervisorState
 
 

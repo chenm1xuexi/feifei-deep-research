@@ -4,10 +4,11 @@ from typing import List, Annotated, Literal
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import MessageLikeRepresentation, filter_messages, HumanMessage
 from langchain_core.tools import tool, InjectedToolArg
+from langchain_mcp_adapters.client import MultiServerMCPClient
 from pydantic import BaseModel, Field
 from tavily import AsyncTavilyClient
 
-from langgraph.runtime import get_runtime
+from langgraph.runtime import get_runtime, Runtime
 
 from common.log import logger
 from deep_research.graph.context import StaticContext
@@ -17,6 +18,7 @@ from dotenv import load_dotenv
 
 from deep_research.graph.researcher.prompts import summarize_webpage_prompt
 from deep_research.graph.researcher.state import Summary
+from deep_research.graph.supervisor.state import ResearchComplete
 from deep_research.llms.llm import get_llm
 from deep_research.utils.utils import now
 
@@ -91,7 +93,7 @@ async def web_search_tool(
     runtime = get_runtime(StaticContext)
     static_context = runtime.context
 
-    # 获取允许网页
+    # 获取允许网页的最大字符内容
     max_char_to_include = static_context.max_content_length
 
     # 获取对网页内容进行总结的模型
@@ -114,10 +116,10 @@ async def web_search_tool(
         for result in unique_results.values()
     ]
 
-    # Step 5: Execute all summarization tasks in parallel
+    # 5: 并行执行所有的摘要任务，等待任务执行完成
     summaries = await asyncio.gather(*summarization_tasks)
 
-    # Step 6: Combine results with their summaries
+    # 6. 合并总结摘要内容
     summarized_results = {
         url: {
             'title': result['title'],
@@ -130,7 +132,7 @@ async def web_search_tool(
         )
     }
 
-    # Step 7: Format the final output
+    # 7: 格式化最终摘要结构
     if not summarized_results:
         return "No valid search results found. Please try different search queries or use a different search API."
 
@@ -161,11 +163,8 @@ async def tavily_search_async(
     Returns:
         来自Tavily API的搜索结果字典列表
     """
-    # Initialize the Tavily client with API key from config
-
     tavily_client = AsyncTavilyClient(api_key=os.getenv("TAVILY_API_KEY"))
 
-    # Create search tasks for parallel execution
     search_tasks = [
         tavily_client.search(
             query,
@@ -176,7 +175,6 @@ async def tavily_search_async(
         for query in search_queries
     ]
 
-    # Execute all search queries in parallel and return results
     search_results = await asyncio.gather(*search_tasks)
     return search_results
 
@@ -205,13 +203,13 @@ async def summarize_webpage(model: BaseChatModel, webpage_content: str) -> str:
             date_time=now(),
         )
 
-        # Execute summarization with timeout to prevent hanging
+        # 异步执行，运行总计
         summary = await asyncio.wait_for(
             model.ainvoke([HumanMessage(content=prompt_content)]),
-            timeout=60.0  # 60 second timeout for summarization
+            timeout=60.0  # 设置总结的超时时间
         )
 
-        # Format the summary with structured sections
+        # 总结摘要，返回结构化的章节信息
         formatted_summary = (
             f"<summary>\n{summary.summary}\n</summary>\n\n"
             f"<key_excerpts>\n{summary.key_excerpts}\n</key_excerpts>"
@@ -220,10 +218,92 @@ async def summarize_webpage(model: BaseChatModel, webpage_content: str) -> str:
         return formatted_summary
 
     except asyncio.TimeoutError:
-        # Timeout during summarization - return original content
+        #  超时 则返回原始内容
         logger.warning("Summarization timed out after 60 seconds, returning original content")
         return webpage_content
     except Exception as e:
-        # Other errors during summarization - log and return original content
+        # 其他异常也返回原始内容
         logger.warning(f"Summarization failed with error: {str(e)}, returning original content")
         return webpage_content
+
+
+
+async def load_mcp_tools(runtime: Runtime[StaticContext], existing_tool_names: set[str]):
+    """
+    通过mcp配置信息，获取所有的mcp工具集
+    :param runtime:
+    :param existing_tool_names:
+    :return:
+    """
+
+    static_context = runtime.context
+    mcp_config = static_context.mcp_config
+    if mcp_config:
+        return []
+
+    # Example:
+    # {
+    #  "math": {
+    #       "command": "python",
+    #       "args": ["/path/to/math_server.py"],
+    #       "transport": "stdio",
+    #             },
+    #  "weather": {
+    #             "transport": "streamable_http",
+    #             "url": "http://localhost:8000/mcp",
+    #             "headers": {
+    #                 "Authorization": "Bearer YOUR_TOKEN",
+    #                 "X-Custom-Header": "custom-value"
+    #             },
+    #         }
+    # }
+
+    try:
+        client = MultiServerMCPClient(mcp_config)
+        available_mcp_tools = await client.get_tools()
+    except Exception as e:
+        logger.exception("get mcp tools error", e)
+        return []
+
+    configured_tools = []
+    for mcp_tool in available_mcp_tools:
+        # 提出重复名称的mcp tool
+        if mcp_tool.name in existing_tool_names:
+            logger.warning(
+                f"MCP tool '{mcp_tool.name}' conflicts with existing tool name - skipping"
+            )
+            continue
+
+        configured_tools.append(mcp_tool)
+
+    return configured_tools
+
+
+async def execute_tool_safely(tool, args, runtime: Runtime[StaticContext]):
+    """Safely execute a tool with error handling."""
+    try:
+        return await tool.ainvoke(args)
+    except Exception as e:
+        return f"Error executing tool: {str(e)}"
+
+
+
+async def get_all_tools(runtime: Runtime[StaticContext]):
+    """ 获取所有的工具集 """
+
+    tools = [
+        tool(ResearchComplete),
+        think_tool,
+        web_search_tool,
+    ]
+
+    existing_tool_names = {tool.name for tool in tools}
+
+    mcp_tools = await load_mcp_tools(runtime, existing_tool_names)
+
+    tools.extend(mcp_tools)
+
+    return tools
+
+
+

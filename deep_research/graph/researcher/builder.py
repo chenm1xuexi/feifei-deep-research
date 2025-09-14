@@ -2,6 +2,7 @@ from langgraph.constants import END
 from langgraph.graph import StateGraph
 
 from deep_research.graph.context import StaticContext
+from deep_research.graph.researcher.nodes import researcher, researcher_tools, compress_research
 from deep_research.graph.researcher.state import ResearcherState, ResearcherOutputState
 
 
