@@ -27,23 +27,23 @@ class StaticContext(BaseModel):
                                            description="researcher 最大研究迭代次数。researcher会反思研究并提出后续问题的次数。")
     max_react_tool_calls: int = Field(default=10, description="research agent 最大可调用工具次数")
 
-    summarization_model: str = Field(default="gemini-2.5-pro", description="针对联网搜索结果进行总结的模型选择")
+    summarization_model: str = Field(default="google/gemini-2.5-pro", description="针对联网搜索结果进行总结的模型选择")
     summarization_model_max_tokens: str = Field(default=100000, description="模型最大输出token")
     max_content_length: int = Field(default=30000,
                                     description="允许网页内容最大长度限制，网页内容将交与总结模型进行生成摘要")
 
-    research_model: str = Field(default="gemini-2.5-pro", description="进行深度研究的模型选择")
+    research_model: str = Field(default="google/gemini-2.5-pro", description="进行深度研究的模型选择")
     research_model_max_context_length: str = Field(default=100000, description="深度研究模型最终输出的最大长度token限制")
     research_model_max_tokens: str = Field(default=50000, description="深度研究模型最终输出的最大长度token限制")
 
-    compression_model: str = Field(default="gemini-2.5-pro",
+    compression_model: str = Field(default="google/gemini-2.5-pro",
                                    description="对研究智能体的发现成果 整体进行压缩的模型")
     compression_model_context_length: int = Field(default=100000,
                                                   description="上下文压缩模型最大输入token")
     compression_model_max_tokens: str = Field(default=8192, description="上下文压缩模型最大输出token")
 
 
-    final_report_model: str = Field(default="gemini-2.5-pro", description="撰写研究报告的模型选择")
+    final_report_model: str = Field(default="google/gemini-2.5-pro", description="撰写研究报告的模型选择")
     final_report_model_max_tokens: str = Field(default=20000, description="撰写报告模型最大输出token")
 
     mcp_config: dict = Field(default={}, description="mcp配置")

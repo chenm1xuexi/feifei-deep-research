@@ -1,9 +1,13 @@
 import os
 
+from chainlit.utils import mount_chainlit
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
+from dotenv import load_dotenv
 
 from common.log import logger
+
+load_dotenv()
 
 app = FastAPI(
     title="Feifei Deep Research API",
@@ -24,5 +28,12 @@ app.add_middleware(
     allow_headers=["*"],  # Now allow all headers, but can be restricted further
 )
 
+# 添加chainlit路由
+mount_chainlit(app=app, target="./chainlit_app/chainlit_api.py", path="")
+
 
 if __name__ == '__main__':
+    import uvicorn
+    uvicorn.run("app:app", host="0.0.0.0", port=8888, reload=True)
+
+

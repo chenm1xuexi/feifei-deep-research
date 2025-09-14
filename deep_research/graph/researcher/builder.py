@@ -8,7 +8,6 @@ from deep_research.graph.researcher.state import ResearcherState, ResearcherOutp
 
 def build_researcher_graph():
     """ 构建研究员 """
-
     researcher_builder = StateGraph(
         state_schema=ResearcherState,
         output_schema=ResearcherOutputState,
@@ -19,9 +18,9 @@ def build_researcher_graph():
     researcher_builder.add_node("researcher_tools", researcher_tools)  # 工具执行节点
     researcher_builder.add_node("compress_research", compress_research)  # 研究成果总结压缩节点
 
-    researcher_builder.set_entry_point(researcher)
-    # 设置最终的结果退出节点
+    researcher_builder.set_entry_point("researcher")
     researcher_builder.add_edge("compress_research", END)
+
     return researcher_builder.compile()
 
 

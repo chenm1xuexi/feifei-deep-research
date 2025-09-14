@@ -43,8 +43,8 @@ async def clarify_with_user(state: DeepResearchState, runtime: Runtime[StaticCon
 
     # 定义用户澄清模型实例 + 结构化输出
     clarification_model = get_llm(
-        model=static_context.clarification_model,
-        max_tokens=static_context.clarification_model_max_tokens
+        model=static_context.research_model,
+        max_tokens=static_context.research_model_max_tokens
     ).with_structured_output(ClarifyWithUser)  # 结构化输出
 
     # 用户澄清提示词

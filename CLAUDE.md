@@ -19,7 +19,7 @@ The project uses:
 ### Running the Application
 ```bash
 # Run the Chainlit application directly
-python chainlit/chainlit_app.py
+python chainlit_app/chainlit_api.py
 
 # Or using Docker
 docker-compose up --build

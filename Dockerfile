@@ -21,4 +21,4 @@ COPY . /app
 # ENV PATH="/app/venv/bin:$PATH"
 
 # 指定容器启动时运行的命令
-# CMD ["python", "chainlit_app.py"]
+# CMD ["python", "chainlit_api.py"]
