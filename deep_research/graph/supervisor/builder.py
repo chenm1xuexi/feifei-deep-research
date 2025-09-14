@@ -18,3 +18,5 @@ def build_supervisor_graph():
 
     # 返回主管智能体 graph图
     return supervisor_builder.compile()
+
+supervisor_subgraph = build_supervisor_graph()

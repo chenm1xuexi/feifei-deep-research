@@ -138,6 +138,7 @@ async def researcher_tools(
         update={"researcher_messages": tool_outputs}
     )
 
+
 async def compress_research(
         state: ResearcherState,
         runtime: Runtime[StaticContext],
@@ -161,7 +162,6 @@ async def compress_research(
     researcher_messages.append(HumanMessage(content=compress_research_simple_human_message))
 
     # 这里需要注意上下文上限问题，暂时采用截断
-
     compression_prompt = compress_research_system_prompt.format(date_time=now())
     messages = [SystemMessage(content=compression_prompt)] + researcher_messages
 

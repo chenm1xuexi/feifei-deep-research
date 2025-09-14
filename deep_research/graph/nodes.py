@@ -2,11 +2,13 @@ from typing import Literal
 
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from langgraph.constants import END
+from langgraph.prebuilt.chat_agent_executor import AgentState
 from langgraph.runtime import Runtime
 from langgraph.types import Command
 
 from common.log import logger
 from deep_research.graph.context import StaticContext
+from deep_research.graph.prompts import final_report_generation_prompt
 from deep_research.graph.state import DeepResearchState, ClarifyWithUser, ResearchQuestion
 from deep_research.graph.supervisor.prompts import lead_researcher_prompt
 from deep_research.llms.llm import get_llm
@@ -116,3 +118,48 @@ async def write_research_brief(state: DeepResearchState, runtime: Runtime[Static
         }
 
     )
+
+
+async def final_report_generation(state: DeepResearchState, runtime: Runtime[StaticContext]):
+    """
+        生成最终的综合研究报告，并包含针对令牌限制的重试逻辑。
+        该函数接收所有收集到的研究发现，并使用配置的报告生成模型将其综合成一个结构良好、内容全面的最终报告。
+
+        参数:
+            state: 包含研究发现和上下文的代理状态
+            runtime: 静态运行上下文
+
+        返回:
+            包含最终报告和已清理状态的字典
+        """
+
+    static_context = runtime.context
+
+    # 获取深度研究成果
+    notes = state.get("notes", [])
+    # 清理状态机
+    cleared_state = {"notes": {"type": "override", "value": []}}
+    # 组装为一个大的字符串
+    findings = "\n".join(notes)
+
+    # 撰写最终的研究报告
+    final_report_model = get_llm(
+        model=static_context.final_report_model,
+        max_tokens=static_context.final_report_model_max_tokens
+    )
+
+    final_report_prompt = final_report_generation_prompt.format(
+        date_time=now(),
+        research_brief=state.get("research_brief", ""),
+        messages=get_buffer_string(state.get("messages", [])),
+        findings=findings,
+    )
+
+    final_report = await final_report_model.ainvoke([HumanMessage(content=final_report_prompt)])
+
+    # Return successful report generation
+    return {
+        "final_report": final_report.content,
+        "messages": [final_report],
+        **cleared_state
+    }

@@ -1,9 +1,10 @@
 """
 主管智能体 相关节点
 """
+import asyncio
 from typing import Literal
 
-from langchain_core.messages import ToolMessage
+from langchain_core.messages import ToolMessage, HumanMessage
 from langgraph.constants import END
 from langgraph.runtime import Runtime
 from langgraph.types import Command
@@ -12,6 +13,8 @@ from deep_research.graph.context import StaticContext
 from deep_research.graph.supervisor.state import SupervisorState, ConductResearch, ResearchComplete
 from deep_research.graph.tools import think_tool, get_notes_from_tool_calls
 from deep_research.llms.llm import get_llm
+from deep_research.graph.researcher.builder import researcher_subgraph
+from langchain_core.messages.utils import trim_messages, count_tokens_approximately
 
 
 async def supervisor(state: SupervisorState, runtime: Runtime[StaticContext]) -> Command[Literal["supervisor_tools"]]:
@@ -30,7 +33,6 @@ async def supervisor(state: SupervisorState, runtime: Runtime[StaticContext]) ->
         """
     static_context = runtime.context
 
-
     supervisor_tools = [
         ConductResearch,
         ResearchComplete,
@@ -43,8 +45,19 @@ async def supervisor(state: SupervisorState, runtime: Runtime[StaticContext]) ->
         max_tokens=static_context.research_model_max_tokens,
     ).bind_tools(supervisor_tools)
 
-    # 获取研究简介等相关信息
+    # 获取整体研究消息上下文
     supervisor_messages = state.get("supervisor_messages", [])
+
+    # 因此这里也需要进行上下文压缩，因为多次研究后，可能研究深度已达最大模型上下文上限
+    supervisor_messages = trim_messages(
+        messages=supervisor_messages,
+        strategy="last",
+        max_tokens=static_context.research_model_max_context_length,
+        token_counter=count_tokens_approximately,
+        include_system=True,
+        end_on=("human", "tool"),
+    )
+
     response = await research_model.ainvoke(supervisor_messages)
 
     return Command(
@@ -97,12 +110,11 @@ async def supervisor_tools(state: SupervisorState, runtime: Runtime[StaticContex
         return Command(
             goto=END,
             update={
-                "notes": get_notes_from_tool_calls(supervisor_messages),  # 提取工具调用信息
+                "notes": get_notes_from_tool_calls(supervisor_messages),  # 提取所有研究成果的工具结果信息
                 "research_brief": state.get("research_brief", ""),
             }
 
         )
-
 
     # 处理工具调用
     all_tool_messages = []
@@ -129,20 +141,54 @@ async def supervisor_tools(state: SupervisorState, runtime: Runtime[StaticContex
     ]
 
     if conduct_research_calls:
+
         # 这是一种兜底策略，这里这么做的目的是防止模型分配的子任务过多，导致并发调度达到资源阈值，进而任务失败
         allowed_conduct_research_calls = conduct_research_calls[:static_context.max_concurrent_research_units]
         overflow_conduct_research_calls = conduct_research_calls[static_context.max_concurrent_research_units:]
 
         research_tasks = [
-
+            researcher_subgraph.ainvoke(
+                input={
+                    "researcher_messages": [
+                        HumanMessage(content=tool_call["args"]["research_topic"])
+                    ],
+                    "research_topic": tool_call["args"]["research_topic"],
+                },
+                context=static_context,
+            ) for tool_call in allowed_conduct_research_calls
         ]
 
+        # 并行调度子任务，获取子智能体 工具返回结果
+        tool_results = await asyncio.gather(*research_tasks)
 
+        # 将子智能体的研究成果组装为工具消息返回
+        for observation, tool_call in zip(tool_results, allowed_conduct_research_calls):
+            all_tool_messages.append(ToolMessage(
+                content=observation.get("compressed_research",
+                                        "Error synthesizing research report: Maximum retries exceeded"),
+                name=tool_call["name"],
+                tool_call_id=tool_call["id"]
+            ))
 
+        # 并发调度溢出的工具，不会进行研究，直接返回错误信息
+        for overflow_call in overflow_conduct_research_calls:
+            all_tool_messages.append(ToolMessage(
+                content=f"Error: Did not run this research as you have already exceeded the maximum number of concurrent research units. Please try again with {static_context.max_concurrent_research_units} or fewer research units.",
+                name="ConductResearch",
+                tool_call_id=overflow_call["id"]
+            ))
 
+        # 聚合所有工具的研究成果为一个大的字符串
+        raw_notes_concat = "\n".join([
+            "\n".join(observation.get("raw_notes", []))
+            for observation in tool_results
+        ])
 
+        if raw_notes_concat:
+            update_payload["raw_notes"] = [raw_notes_concat]
 
-
-
-
-
+        update_payload["supervisor_messages"] = all_tool_messages  # 将所有的工具调用结果添加到supervisor_messages中
+        return Command(
+            goto="supervisor",
+            update=update_payload
+        )

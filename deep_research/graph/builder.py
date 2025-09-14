@@ -3,6 +3,7 @@ from langgraph.graph import StateGraph
 from deep_research.graph.context import StaticContext
 from deep_research.graph.nodes import clarify_with_user, write_research_brief
 from deep_research.graph.state import DeepResearchState, AgentInputState
+from deep_research.graph.supervisor.builder import supervisor_subgraph
 
 
 def build_graph():

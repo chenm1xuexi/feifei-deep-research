@@ -33,6 +33,7 @@ class StaticContext(BaseModel):
                                     description="允许网页内容最大长度限制，网页内容将交与总结模型进行生成摘要")
 
     research_model: str = Field(default="gemini-2.5-pro", description="进行深度研究的模型选择")
+    research_model_max_context_length: str = Field(default=100000, description="深度研究模型最终输出的最大长度token限制")
     research_model_max_tokens: str = Field(default=50000, description="深度研究模型最终输出的最大长度token限制")
 
     compression_model: str = Field(default="gemini-2.5-pro",
