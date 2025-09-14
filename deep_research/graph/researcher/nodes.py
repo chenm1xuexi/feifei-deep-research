@@ -16,6 +16,7 @@ from deep_research.graph.researcher.state import ResearcherState
 from deep_research.graph.tools import execute_tool_safely, get_all_tools
 from deep_research.llms.llm import get_llm
 from deep_research.utils.utils import now
+from common.log import logger
 
 
 async def researcher(state: ResearcherState, runtime: Runtime[StaticContext]):
@@ -32,6 +33,7 @@ async def researcher(state: ResearcherState, runtime: Runtime[StaticContext]):
         返回:
             命令以继续到researcher_tools执行工具
         """
+    logger.info(f"====== researcher start ======")
 
     static_context = runtime.context
     researcher_messages = state.get("researcher_messages", [])
@@ -83,6 +85,7 @@ async def researcher_tools(
         返回:
             命令以继续研究循环或进入压缩阶段
         """
+    logger.info(f"====== researcher_tools start ======")
 
     static_context = runtime.context
     researcher_messages = state.get("researcher_messages", [])
@@ -127,16 +130,20 @@ async def researcher_tools(
 
     # 如果超过最大调用次数或者调用了ResearchComplete，则转交给 压缩阶段
     if exceeded_iterations or research_complete_called:
-        return Command(
+        result = Command(
             goto="compress_research",
             update={"researcher_messages": tool_outputs}
         )
+        logger.info(f"====== researcher_tools end (going to compress_research) ======")
+        return result
 
     # 其他情况，继续进行研究
-    return Command(
+    result = Command(
         goto="researcher",
         update={"researcher_messages": tool_outputs}
     )
+    logger.info(f"====== researcher_tools end (going to researcher) ======")
+    return result
 
 
 async def compress_research(
@@ -155,6 +162,7 @@ async def compress_research(
     返回:
         包含压缩研究摘要和原始笔记的字典
     """
+    logger.info(f"====== compress_research start ======")
 
     static_context = runtime.context
     researcher_messages = state.get("researcher_messages", [])
@@ -189,7 +197,10 @@ async def compress_research(
         for message in filter_messages(researcher_messages, include_types=["tool", "ai"])
     ])
 
-    return {
+    result = {
         "compressed_research": str(response.content),
         "raw_notes": [raw_notes_content]
     }
+    
+    logger.info(f"====== compress_research end ======")
+    return result

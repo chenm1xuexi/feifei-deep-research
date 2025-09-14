@@ -7,7 +7,7 @@ from typing import Literal
 from langchain_core.messages import ToolMessage, HumanMessage
 from langgraph.constants import END
 from langgraph.runtime import Runtime
-from langgraph.types import Command
+from langgraph.types import Command, Send
 
 from deep_research.graph.context import StaticContext
 from deep_research.graph.supervisor.state import SupervisorState, ConductResearch, ResearchComplete
@@ -31,6 +31,7 @@ async def supervisor(state: SupervisorState, runtime: Runtime[StaticContext]) ->
         返回:
             命令，继续执行 supervisor_tools 工具
         """
+    logger.info(f"====== supervisor start ======")
     static_context = runtime.context
 
     supervisor_tools = [
@@ -60,13 +61,16 @@ async def supervisor(state: SupervisorState, runtime: Runtime[StaticContext]) ->
 
     response = await research_model.ainvoke(supervisor_messages)
 
-    return Command(
+    result = Command(
         goto="supervisor_tools",  # 直接路由到主管工具节点，完成工具执行
         update={
             "supervisor_messages": [response],  # 将主管的回复添加到消息状态中
             "research_iterations": state.get("research_iterations", 0) + 1  # 更新研究迭代次数
         }
     )
+    
+    logger.info(f"====== supervisor end ======")
+    return result
 
 
 async def supervisor_tools(state: SupervisorState, runtime: Runtime[StaticContext]) -> Command[
@@ -85,6 +89,7 @@ async def supervisor_tools(state: SupervisorState, runtime: Runtime[StaticContex
         返回:
             命令，用于继续主管循环或结束研究阶段
         """
+    logger.info(f"====== supervisor_tools start ======")
 
     static_context = runtime.context
     supervisor_messages = state.get("supervisor_messages", [])
@@ -107,14 +112,15 @@ async def supervisor_tools(state: SupervisorState, runtime: Runtime[StaticContex
 
     # 退出条件：超出最大研究次数 或者 不存在工具调用 或者 研究完成，则退出当前深度研究图
     if exceeded_allowed_iterations or no_tool_calls or research_complete_tool_call:
-        return Command(
+        result = Command(
             goto=END,
             update={
                 "notes": get_notes_from_tool_calls(supervisor_messages),  # 提取所有研究成果的工具结果信息
                 "research_brief": state.get("research_brief", ""),
             }
-
         )
+        logger.info(f"====== supervisor_tools end (going to END) ======")
+        return result
 
     # 处理工具调用
     all_tool_messages = []
@@ -188,7 +194,9 @@ async def supervisor_tools(state: SupervisorState, runtime: Runtime[StaticContex
             update_payload["raw_notes"] = [raw_notes_concat]
 
         update_payload["supervisor_messages"] = all_tool_messages  # 将所有的工具调用结果添加到supervisor_messages中
-        return Command(
+        result = Command(
             goto="supervisor",
             update=update_payload
         )
+        logger.info(f"====== supervisor_tools end (going to supervisor) ======")
+        return result
