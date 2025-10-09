@@ -163,6 +163,7 @@ async def supervisor_tools(state: SupervisorState, runtime: Runtime[StaticContex
                     "research_topic": tool_call["args"]["research_topic"],
                 },
                 context=static_context,
+                subgraphs=True,
             ) for tool_call in allowed_conduct_research_calls
         ]
 

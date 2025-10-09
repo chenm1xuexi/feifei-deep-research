@@ -11,6 +11,8 @@ class DeepResearchState(MessagesState):
     """ 深度研究state, 主agent 状态上下文 """
     # 主管智能体 消息上下文
     supervisor_messages: Annotated[list[MessageLikeRepresentation], override_reducer]
+    # 是否需要用户澄清
+    need_clarification: bool
     # 研究摘要，通过人在环路后，交由大模型生成的研究主题摘要，是后续进行深度研究的核心基础
     research_brief: Optional[str]
     raw_notes: Annotated[list[str], override_reducer] = []

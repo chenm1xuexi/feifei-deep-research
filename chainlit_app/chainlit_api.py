@@ -1,4 +1,4 @@
-from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
+from langchain_core.messages import HumanMessage, AIMessage, SystemMessage, AIMessageChunk, ToolMessage
 from langgraph.checkpoint.memory import MemorySaver
 
 from common.log import logger
@@ -32,8 +32,7 @@ def to_langchain_message():
 @cl.on_message
 async def chat(message: cl.Message):
     messages = to_langchain_message()
-    print(messages)
-    async for stream_mode, chunk in deep_researcher.astream(
+    async for chunk in deep_researcher.astream(
             input={
                 "messages": messages,
             },
@@ -42,9 +41,47 @@ async def chat(message: cl.Message):
                 "session_id": cl.user_session.get("id"),
             },
             stream_mode=["updates"],
+            subgraphs=True,
     ):
         logger.info(chunk)
-        if chunk.get("clarify_with_user"):
-            ai_message = chunk.get("clarify_with_user").get("messages")[-1]
-            await cl.Message(content=ai_message.content).send()
+        graph_node, stream_mode, node = chunk
+        if not graph_node:
+            # 说明在主图节点
+            for node_name, node_value in node.items():
+                if node_name == "clarify_with_user":
+                        response = node_value.get("messages")[-1]
+                        await cl.Message(content=response.content).send()
+                if node_name == "write_research_brief":
+                    research_brief = node_value.get("research_brief")
+                    await cl.Message(content="研究简介：\n\n" + research_brief).send()
+        else:
+            # 具体的子图节点
+            sub_graph_node = graph_node[-1]
+            if sub_graph_node.startswith("research_supervisor:"):
+                for node_name, node_value in node.items():
+                    if node_name == "supervisor":
+                        response = node_value.get("supervisor_messages")[-1]
+                        if isinstance(response, AIMessage):
+                            if response.content:
+                                await cl.Message(content=response.content).send()
+                            if response.tool_calls:
+                                tool_call = response.tool_calls[0]
+                                async with cl.Step(name=tool_call.get("name"),
+                                                   type="tool",
+                                                   id=tool_call.get("id"),
+                                                   default_open=True) as research_topic_tool:
+                                    research_topic_tool.input = tool_call.get("args")
+                    elif node_name == "researcher":
+                        pass
+            elif sub_graph_node.startswith("supervisor_tools:"):
+                if node_name == "supervisor_tools":
+                    response = node_value.get("supervisor_messages")[-1]
+                    if isinstance(response, ToolMessage):
+                        async with cl.Step(name=response.name, type="tool", id=response.tool_call_id,
+                                           default_open=True) as step:
+                            step.output = response.content
+
+
+
+
 
